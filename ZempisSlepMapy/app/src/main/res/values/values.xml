@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">ZeměpisSlepéMapy</string>
+    <string name="tab_text_1">Randomizer</string>
+    <string name="tab_text_2">Editor</string>
+    <string name="tab_text_3">Scanner</string>
+
+    <dimen name="CAMERA_BUTTON_RADIUS">30dp</dimen>
+</resources>

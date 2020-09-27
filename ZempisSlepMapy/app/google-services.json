@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "674698340929",
+    "firebase_url": "https://zemepiepemapy.firebaseio.com",
+    "project_id": "zemepiepemapy",
+    "storage_bucket": "zemepiepemapy.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:674698340929:android:a101443139f6057f3eb4c0",
+        "android_client_info": {
+          "package_name": "com.example.zempisslepmapy"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "674698340929-qhvia8h0n8qvb0jj91pumho8ami0ftim.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDcsPWfCy4QsBqTaepOXKUjXAG6L6GQ3MY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "674698340929-qhvia8h0n8qvb0jj91pumho8ami0ftim.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

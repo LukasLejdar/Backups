@@ -1,0 +1,254 @@
+                Triangle[] clipped = new Triangle[2]; clipped[0] = new Triangle(); clipped[1] = new Triangle();
+                ArrayList<Triangle> listTriangles = new ArrayList<Triangle>();
+                listTriangles.add(triToRaster);
+                int nNewTriangles = 1;
+
+                for (int i = 0; i < 4; i++) {
+                    int nTrisToAdd = 0;
+
+                    while (nNewTriangles > 0) {
+                        Triangle t = listTriangles.get(0);
+                        listTriangles.remove(0);
+                        nNewTriangles--;
+
+                        switch (i) {
+                            case 0:	nTrisToAdd = f.clipAgainstPlaneTRinagle(f.newVec(0.0f, 0.0f, 0.0f), f.newVec(0.0f, 1.0f, 0.0f), t, clipped); break;
+                            case 1:	nTrisToAdd = f.clipAgainstPlaneTRinagle(f.newVec(0.0f, screenY - 1, 0.0f), f.newVec(0.0f, -1.0f, 0.0f), t, clipped); break;
+                            case 2:	nTrisToAdd = f.clipAgainstPlaneTRinagle(f.newVec(0.0f, 0.0f, 0.0f), f.newVec(1.0f, 0.0f, 0.0f), t, clipped); break;
+                            case 3: nTrisToAdd = f.clipAgainstPlaneTRinagle(f.newVec(screenX - 1, 0.0f, 0.0f), f.newVec(-1.0f, 0.0f, 0.0f), t, clipped);break;
+                        }
+
+                        for (int o = 0; o < nTrisToAdd; o++) {
+                            listTriangles.add(f.cloneTriangle(clipped[o]));
+                        }
+
+                    }
+                    nNewTriangles = listTriangles.size();
+                }
+
+                for (Triangle t: listTriangles) {
+                    drawPoly(canvas, t, Color.BLACK);
+                }
+
+
+
+                if (f.dotProductVec(tri.normal, vCameraRay) > 0) {
+                        // Convert World Space --> View Space
+                        tri.v[0] = f.multiplyMatrixVec(camera.matView, tri.v[0]);
+                        tri.v[1] = f.multiplyMatrixVec(camera.matView, tri.v[1]);
+                        tri.v[2] = f.multiplyMatrixVec(camera.matView, tri.v[2]);
+
+                        // Clip Viewed Triangle against near plane,
+                        int nClippedTriangles;
+                        Triangle[] clipped = new Triangle[2]; clipped[0] = new Triangle(); clipped[1] = new Triangle();
+                        nClippedTriangles = f.clipAgainstPlaneTRinagle(f.newVec(0.0f, 0.0f, 0.1f), f.newVec(0.0f, 0.0f, 1.0f), tri, clipped);
+
+                        for (int n = 0; n < nClippedTriangles; n++) {
+                            Triangle triC = clipped[n];
+                            Matrix matProj = camera.matProj;
+
+                            tri = new Triangle();
+                            tri.v[0] = f.multiplyMatrixVec(matProj, triC.v[0]);
+                            tri.v[1] = f.multiplyMatrixVec(matProj, triC.v[1]);
+                            tri.v[2] = f.multiplyMatrixVec(matProj, triC.v[2]);
+                            tri.lumcolor = triC.lumcolor;
+
+                            // Scale into view, we moved the normalising into cartesian space
+                            // out of the matrix.vector function from the previous videos, so
+                            // do this manually
+                            tri.v[0] = f.divVec(tri.v[0], tri.v[0].w);
+                            tri.v[1] = f.divVec(tri.v[1], tri.v[1].w);
+                            tri.v[2] = f.divVec(tri.v[2], tri.v[2].w);
+
+                            // Offset verts into visible normalised space
+                            Vec vOffsetView = f.newVec(1,1,0);
+                            tri.v[0] = f.addVec(tri.v[0], vOffsetView);
+                            tri.v[1] = f.addVec(tri.v[1], vOffsetView);
+                            tri.v[2] = f.addVec(tri.v[2], vOffsetView);
+                            tri.v[0].x *= centerX;
+                            tri.v[0].y *= centerY;
+                            tri.v[1].x *= centerX;
+                            tri.v[1].y *= centerY;
+                            tri.v[2].x *= centerX;
+                            tri.v[2].y *= centerY;
+
+                            vecTrianglesToRaster.put(tri, (tri.v[0].z + tri.v[1].z + tri.v[2].z)/3);
+                        }
+                    }
+                }
+
+                public int clipAgainstPlaneTRinagle(Vec plane_p, Vec plane_n, Triangle in_tri, Triangle[] clipped) {
+                        // Make sure plane normal is indeed normal
+                        plane_n = normalizeVec(plane_n);
+
+                        // Create two temporary storage arrays to classify points either side of plane
+                        // If distance sign is positive, point lies on "inside" of plane
+                        Vec[] inside_points = new Vec[3];  int nInsidePointCount = 0;
+                        Vec[] outside_points = new Vec[3]; int nOutsidePointCount = 0;
+
+                        // Get signed distance of each point in triangle to plane
+                        float d0 = dist(in_tri.v[0], plane_p, plane_n);
+                        float d1 = dist(in_tri.v[1], plane_p, plane_n);
+                        float d2 = dist(in_tri.v[2], plane_p, plane_n);
+
+                        if (d0 >= 0) { inside_points[nInsidePointCount++] = in_tri.v[0]; }
+                        else { outside_points[nOutsidePointCount++] = in_tri.v[0]; }
+                        if (d1 >= 0) { inside_points[nInsidePointCount++] = in_tri.v[1]; }
+                        else { outside_points[nOutsidePointCount++] = in_tri.v[1]; }
+                        if (d2 >= 0) { inside_points[nInsidePointCount++] = in_tri.v[2]; }
+                        else { outside_points[nOutsidePointCount++] = in_tri.v[2]; }
+
+
+                        if (nInsidePointCount == 0) {
+                            return 0;
+                        }
+
+                        if (nInsidePointCount == 3) {
+                            clipped[0] = in_tri;
+                            return 1;
+                        }
+
+                        if (nInsidePointCount == 1 && nOutsidePointCount == 2) {
+                            clipped[0].lumcolor = in_tri.lumcolor;
+                            clipped[0].v[0] = cloneVec(inside_points[0]);
+
+                            clipped[0].v[1] = intersectPlaneVec(plane_p, plane_n, cloneVec(inside_points[0]), cloneVec(outside_points[0]));
+                            clipped[0].v[2] = intersectPlaneVec(plane_p, plane_n, cloneVec(inside_points[0]), cloneVec(outside_points[1]));
+                            return 1;
+                        }
+
+                        if (nInsidePointCount == 2 && nOutsidePointCount == 1) {
+                            clipped[0].lumcolor = in_tri.lumcolor;
+                            clipped[1].lumcolor = in_tri.lumcolor;
+
+                            clipped[0].v[0] = cloneVec(inside_points[0]);
+                            clipped[0].v[1] = cloneVec(inside_points[1]);
+                            clipped[0].v[2] = intersectPlaneVec(plane_p, plane_n, cloneVec(inside_points[0]), cloneVec(outside_points[0]));
+
+                            clipped[1].v[0] = cloneVec(inside_points[1]);
+                            clipped[1].v[1] = clipped[0].v[2];
+                            clipped[1].v[2] = intersectPlaneVec(plane_p, plane_n, cloneVec(inside_points[1]), cloneVec(outside_points[0]));
+                            return 2;
+                        }
+
+                        return 0;
+                    }
+                }
+
+
+
+                 public int clipAgainstPlaneTRinagle(Vec plane_p, Vec plane_n, Triangle in_tri, Triangle[] clipped) {
+                         // Make sure plane normal is indeed normal
+                         plane_n = normalizeVec(plane_n);
+
+                         // Create two temporary storage arrays to classify points either side of plane
+                         // If distance sign is positive, point lies on "inside" of plane
+                         Vec[] inside_points = new Vec[3];  int nInsidePointCount = 0;
+                         Vec[] outside_points = new Vec[3]; int nOutsidePointCount = 0;
+
+                         // Get signed distance of each point in triangle to plane
+                         float d0 = dist(in_tri.v[0], plane_p, plane_n);
+                         float d1 = dist(in_tri.v[1], plane_p, plane_n);
+                         float d2 = dist(in_tri.v[2], plane_p, plane_n);
+
+                         if (d0 >= 0) { inside_points[nInsidePointCount++] = in_tri.v[0]; }
+                         else { outside_points[nOutsidePointCount++] = in_tri.v[0]; }
+                         if (d1 >= 0) { inside_points[nInsidePointCount++] = in_tri.v[1]; }
+                         else { outside_points[nOutsidePointCount++] = in_tri.v[1]; }
+                         if (d2 >= 0) { inside_points[nInsidePointCount++] = in_tri.v[2]; }
+                         else { outside_points[nOutsidePointCount++] = in_tri.v[2]; }
+
+
+                         // Now classify triangle points, and break the input triangle into
+                         // smaller output triangles if required. There are four possible
+                         // outcomes...
+
+                         if (nInsidePointCount == 0) {
+                             // All points lie on the outside of plane, so clip whole triangle
+                             // It ceases to exist
+                             return 0; // No returned triangles are valid
+                         }
+
+                         if (nInsidePointCount == 3) {
+                             // All points lie on the inside of plane, so do nothing
+                             // and allow the triangle to simply pass through
+                             clipped[0] = in_tri;
+                             return 1; // Just the one returned original triangle is valid
+                         }
+
+                         if (nInsidePointCount == 1 && nOutsidePointCount == 2) {
+                             // Triangle should be clipped. As two points lie outside
+                             // the plane, the triangle simply becomes a smaller triangle
+
+                             // Copy appearance info to new triangle
+                             clipped[0].lumcolor = in_tri.lumcolor;
+
+                             // The inside point is valid, so keep that...
+                             clipped[0].v[0] = cloneVec(inside_points[0]);
+
+                             // but the two new points are at the locations where the
+                             // original sides of the triangle (lines) intersect with the plane
+                             clipped[0].v[1] = intersectPlaneVec(plane_p, plane_n, cloneVec(inside_points[0]), cloneVec(outside_points[0]));
+                             clipped[0].v[2] = intersectPlaneVec(plane_p, plane_n, cloneVec(inside_points[0]), cloneVec(outside_points[1]));
+                             return 1; // Return the newly formed single triangle
+                         }
+
+                         if (nInsidePointCount == 2 && nOutsidePointCount == 1) {
+                             // Triangle should be clipped. As two points lie inside the plane,
+                             // the clipped triangle becomes a "quad". Fortunately, we can
+                             // represent a quad with two new triangles
+
+                             // Copy appearance info to new triangles
+                             clipped[0].lumcolor = in_tri.lumcolor;
+                             clipped[1].lumcolor = in_tri.lumcolor;
+
+                             // The first triangle consists of the two inside points and a new
+                             // point determined by the location where one side of the triangle
+                             // intersects with the plane
+                             clipped[0].v[0] = cloneVec(inside_points[0]);
+                             clipped[0].v[1] = cloneVec(inside_points[1]);
+                             clipped[0].v[2] = intersectPlaneVec(plane_p, plane_n, cloneVec(inside_points[0]), cloneVec(outside_points[0]));
+
+                             // The second triangle is composed of one of he inside points, a
+                             // new point determined by the intersection of the other side of the
+                             // triangle and the plane, and the newly created point above
+                             clipped[1].v[0] = cloneVec(inside_points[1]);
+                             clipped[1].v[1] = clipped[0].v[2];
+                             clipped[1].v[2] = intersectPlaneVec(plane_p, plane_n, cloneVec(inside_points[1]), cloneVec(outside_points[0]));
+                             return 2; // Return two newly formed triangles which form a quad
+                         }
+
+                         return 0;
+                 }
+
+                    if (f.dotProductVec(tri.normal, vCameraRay) < 0) {
+                        // Convert World Space to View Space
+                        tri.v[0] = f.multiplyMatrixVec(camera.matView, tri.v[0]);
+                        tri.v[1] = f.multiplyMatrixVec(camera.matView, tri.v[1]);
+                        tri.v[2] = f.multiplyMatrixVec(camera.matView, tri.v[2]);
+
+                        // Clip Viewed Triangle against near plane,
+                        int nClippedTriangles;
+                        Triangle[] clipped = new Triangle[2]; clipped[0] = new Triangle(); clipped[1] = new Triangle();
+                        nClippedTriangles = f.clipAgainstPlaneTRinagle(f.newVec(0.0f, 0.0f, 0.1f), f.newVec(0.0f, 0.0f, 1.0f), tri, clipped);
+
+                        for (int n = 0; n < nClippedTriangles; n++) {
+                            Triangle triC = clipped[n];
+                            Matrix matProj = camera.matProj;
+                            Vec vOffsetView = f.newVec(1,1,0);
+                            tri = new Triangle();
+                            tri.lumcolor = triC.lumcolor;
+
+                            for (int i = 0; i < 3; i++) {
+                                tri.v[i] = f.multiplyMatrixVec(matProj, triC.v[i]); //3D to 2D
+                                tri.v[i] = f.divVec(tri.v[i], tri.v[i].w); //scale into view
+                                tri.v[i] = f.addVec(tri.v[i], vOffsetView); // move to the normalized center of the screen
+                                tri.v[i].x *= centerX; // scale to screen size
+                                tri.v[i].y *= centerY;
+                            }
+
+                            vecTrianglesToRaster.put(tri, (tri.v[0].z + tri.v[1].z + tri.v[2].z)/3);
+                        }
+                    }
+
+
